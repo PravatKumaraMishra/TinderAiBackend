@@ -3,7 +3,7 @@ package me.pravat.tinder_ai_backend.conversations;
 import java.util.List;
 
 public record Conversation(
-        String id,
-        String profileId,
-        List<ChatMessage> messages) {
+                String id,
+                String profileId,
+                List<ChatMessage> messages) {
 }
