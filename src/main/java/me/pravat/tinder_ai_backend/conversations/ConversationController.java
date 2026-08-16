@@ -1,10 +1,9 @@
 package me.pravat.tinder_ai_backend.conversations;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,24 +11,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import me.pravat.tinder_ai_backend.profile.Profile;
 import me.pravat.tinder_ai_backend.profile.ProfileRepository;
 
 @RestController
 public class ConversationController {
 
         private final ConversationRepository conversationRepository;
+        private final ConversationService conversationService;
         private final ProfileRepository profileRepository;
 
-        @PostMapping("/conversations")
-        public Conversation createNewConversation(@RequestBody CreateConversationRequest request) {
-                Conversation conversation = new Conversation(
-                                UUID.randomUUID().toString(),
-                                request.profileId(),
-                                new ArrayList<>());
-                conversationRepository.save(conversation);
-                return conversation;
-        }
-
+        @CrossOrigin(origins = "*")
         @PostMapping("/conversations/{conversationId}")
         public Conversation addMessageToConversation(
                         @PathVariable String conversationId,
@@ -38,7 +30,13 @@ public class ConversationController {
                                 .orElseThrow(() -> new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
                                                 "Unable to find conversation with the ID " + conversationId));
-                profileRepository.findById(chatMessage.authorId())
+                String matchProfileId = conversation.profileId();
+
+                Profile profile = profileRepository.findById(matchProfileId)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Unable to find a profile with ID " + matchProfileId));
+                Profile user = profileRepository.findById(chatMessage.authorId())
                                 .orElseThrow(() -> new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
                                                 "Unable to find a profile with ID " + chatMessage.authorId()));
@@ -48,10 +46,12 @@ public class ConversationController {
                                 chatMessage.authorId(),
                                 LocalDateTime.now());
                 conversation.messages().add(messageWithTime);
+                conversationService.generateProfileResponse(conversation, profile, user);
                 conversationRepository.save(conversation);
                 return conversation;
         }
 
+        @CrossOrigin(origins = "*")
         @GetMapping("/conversations/{conversationId}")
         public Conversation getConversation(
                         @PathVariable String conversationId) {
@@ -61,13 +61,10 @@ public class ConversationController {
                                                 "Unable to find conversation with the ID " + conversationId));
         }
 
-        public record CreateConversationRequest(
-                        String profileId) {
-        }
-
         public ConversationController(ConversationRepository conversationRepository,
-                        ProfileRepository profileRepository) {
+                        ProfileRepository profileRepository, ConversationService conversationService) {
                 this.conversationRepository = conversationRepository;
                 this.profileRepository = profileRepository;
+                this.conversationService = conversationService;
         }
 }
