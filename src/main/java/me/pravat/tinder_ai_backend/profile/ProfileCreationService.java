@@ -2,39 +2,28 @@ package me.pravat.tinder_ai_backend.profile;
 
 import static me.pravat.tinder_ai_backend.Utils.selfieTypes;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClient;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-
-import io.micrometer.common.util.StringUtils;
 
 @Service
 public class ProfileCreationService {
@@ -43,6 +32,7 @@ public class ProfileCreationService {
     private final ProfileTools profileTools;
     private static final String PROFILES_FILE_PATH = "profiles.json";
     private final ProfileRepository profileRepository;
+    private final RestClient restClient;
 
     @Value("${startup-actions.initializeProfiles:false}")
     private boolean initializedProfiles;
@@ -62,136 +52,125 @@ public class ProfileCreationService {
     @Value("#{${tinderai.character.user}}")
     private Map<String, String> userProfileProperties;
 
-    public ProfileCreationService(ChatClient chatClient, ProfileTools profileTools,
-            ProfileRepository profileRepository) {
-        this.chatClient = chatClient;
-        this.profileTools = profileTools;
-        this.profileRepository = profileRepository;
-    }
+    @Value("${pixazo.api-key}")
+    private String pixazoApiKey;
 
     public void createProfiles(int numberOfProfiles) {
         if (initializedProfiles) {
             return;
         }
 
-        Collections.shuffle(ethnicities);
-        String gender = lookingForGender;
-
-        for (String ethnicity : ethnicities) {
+        while (profileTools.getGeneratedProfiles().size() < numberOfProfiles) {
+            String ethnicity = getRandomElement(ethnicities);
             int age = ThreadLocalRandom.current().nextInt(minAge, maxAge + 1);
-
-            List<Profile> profiles = profileTools.getGeneratedProfiles();
-            if (profiles.size() >= numberOfProfiles) {
-                saveProfileToJson(profiles);
-                return;
-            }
-
-            String buildPrompt = "Create a Tinder profile persona for a " + ethnicity + " " + age + " year old "
-                    + gender.toLowerCase()
-                    + " including first name, last name, Myers Briggs personality type, and a Tinder bio";
-
-            Prompt prompt = new Prompt(buildPrompt);
-            chatClient.prompt(prompt).tools(profileTools).call().content();
+            generateProfile(ethnicity, age);
         }
+        saveProfileToJson(profileTools.getGeneratedProfiles());
     }
 
-    private void saveProfileToJson(List<Profile> generatedProfiles) {
+    private void generateProfile(String ethnicity, int age) {
+        String prompt = buildProfilePrompt(ethnicity, age);
+        chatClient.prompt(prompt).tools(profileTools).call().content();
+    }
+
+    private String buildProfilePrompt(String ethnicity, int age) {
+        return """
+                Create a Tinder profile persona for a %s %d year old %s.
+                Include firstName, lastName, myersBriggsPersonalityType, bio.
+                After generating the profile, call the saveProfile tool.
+                """.formatted(ethnicity, age, lookingForGender.toLowerCase());
+    }
+
+    private void saveProfileToJson(List<GenerateProfileResponse> generatedProfiles) {
+        List<Profile> existingProfiles = readExistingProfiles();
+
+        List<Profile> profiles = generatedProfiles.stream().map((profile) -> generateProfileImage(profile))
+                .toList();
+
+        List<Profile> allProfiles = new ArrayList<>();
+        allProfiles.addAll(profiles);
+        allProfiles.addAll(existingProfiles);
+        writeProfiles(allProfiles);
+    }
+
+    private Profile generateProfileImage(GenerateProfileResponse profile) {
+        String uuid = UUID.randomUUID().toString();
+
+        String prompt = getRandomElement(selfieTypes())
+                + " profile picture of a "
+                + profile.age() + " year old "
+                + profile.ethnicity() + ", "
+                + profile.gender() + ", "
+                + profile.bio()
+                + ", highly detailed, photorealistic, natural lighting.";
+
         try {
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            List<Profile> existingProfiles = new ArrayList<>();
-            File file = new File(PROFILES_FILE_PATH);
+            Map<?, ?> result = restClient.post()
+                    .uri("https://gateway.pixazo.ai/flux-1-schnell/v1/getData")
+                    .header("Ocp-Apim-Subscription-Key", pixazoApiKey)
+                    .body(Map.of(
+                            "prompt", prompt,
+                            "num_steps", 4,
+                            "width", 512,
+                            "height", 512))
+                    .retrieve()
+                    .body(Map.class);
 
-            if (file.exists() && file.length() > 0) {
-                try (FileReader reader = new FileReader(file)) {
-                    Type listType = new TypeToken<ArrayList<Profile>>() {
-                    }.getType();
-                    List<Profile> data = gson.fromJson(reader, listType);
-                    if (data != null) {
-                        existingProfiles.addAll(data);
-                    }
-                }
-            }
+            String imageUrl = (String) result.get("output");
+            byte[] image = restClient.get().uri(imageUrl).retrieve().body(byte[].class);
+            Path dir = Paths.get("src/main/resources/static/images");
+            Files.createDirectories(dir);
 
-            List<Profile> finalProfilesToSave = new ArrayList<>();
-            for (Profile profile : generatedProfiles) {
-                if (profile.imageUrl() == null || profile.imageUrl().isBlank()) {
-                    profile = generateProfileImage(profile);
-                }
-                if (profile != null) {
-                    finalProfilesToSave.add(profile);
-                }
-            }
+            String imageName = uuid + ".png";
+            Files.write(dir.resolve(imageName), image);
 
-            finalProfilesToSave.addAll(existingProfiles);
-
-            String jsonString = gson.toJson(finalProfilesToSave);
-            try (FileWriter writer = new FileWriter(PROFILES_FILE_PATH)) {
-                writer.write(jsonString);
-            }
+            return new Profile(
+                    uuid,
+                    profile.firstName(),
+                    profile.lastName(),
+                    profile.age(),
+                    profile.ethnicity(),
+                    profile.gender(),
+                    profile.bio(),
+                    imageName,
+                    profile.myersBriggsPersonalityType());
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to save profiles to JSON string", e);
+            System.err.println("Image generation failed: " + e.getMessage());
+            return null;
         }
     }
 
-    private Profile generateProfileImage(Profile profile) {
-        String uuid = (profile.id() == null || StringUtils.isBlank(profile.id()))
-                ? UUID.randomUUID().toString()
-                : profile.id();
+    private List<Profile> readExistingProfiles() {
 
-        // 1. Build a clean URL-safe prompt
-        String randomSelfieType = getRandomElement(selfieTypes());
-        String rawPrompt = randomSelfieType + " Profile picture of a " + profile.age() + " year old, "
-                + profile.ethnicity() + ", " + profile.gender() + ", highly detailed, photorealistic. tinder bio: "
-                + profile.bio();
+        Path path = Paths.get(PROFILES_FILE_PATH);
 
-        String encodedPrompt = URLEncoder.encode(rawPrompt, StandardCharsets.UTF_8);
-        String imageUrl = "https://image.pollinations.ai/prompt/" + encodedPrompt + "?width=512&height=512&nologo=true";
+        if (!Files.exists(path)) {
+            return new ArrayList<>();
+        }
 
-        System.out.println("Generating image for " + profile.firstName() + " via Pollinations.ai...");
+        try (var reader = Files.newBufferedReader(path)) {
 
-        // 2. HTTP GET to fetch image bytes
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(imageUrl))
-                .GET()
-                .build();
+            Type listType = new TypeToken<ArrayList<Profile>>() {
+            }.getType();
 
-        try {
-            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() == 200 && response.body() != null) {
+            List<Profile> profiles = new Gson().fromJson(reader, listType);
+            return profiles != null ? profiles : new ArrayList<>();
 
-                String imageName = uuid + ".jpg";
-                String directoryPath = "src/main/resources/static/images/";
-                Path directory = Paths.get(directoryPath);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read profiles.json", e);
+        }
+    }
 
-                if (!Files.exists(directory)) {
-                    Files.createDirectories(directory);
-                }
+    private void writeProfiles(List<Profile> profiles) {
 
-                // Write payload out to file directly
-                Files.write(directory.resolve(imageName), response.body());
-                System.out.println("Successfully saved image for " + profile.firstName() + "!");
+        try (var writer = Files.newBufferedWriter(Paths.get(PROFILES_FILE_PATH))) {
 
-                // Re-instantiate immutable record with valid URL pointer
-                return new Profile(
-                        uuid,
-                        profile.firstName(),
-                        profile.lastName(),
-                        profile.age(),
-                        profile.ethnicity(),
-                        profile.gender(),
-                        profile.bio(),
-                        imageName,
-                        profile.myersBriggsPersonalityType());
-            } else {
-                System.err.println("Pollinations returned error code: " + response.statusCode());
-                return profile; // Return profile intact even if image fails
-            }
-        } catch (IOException | InterruptedException e) {
-            System.err.println("Failed to fetch image: " + e.getMessage());
-            Thread.currentThread().interrupt(); // Restore interrupted state
-            return profile;
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(profiles, writer);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write profiles.json", e);
         }
     }
 
@@ -199,12 +178,12 @@ public class ProfileCreationService {
     public void saveProfilesToDB() {
         Gson gson = new Gson();
         try {
-            List<Profile> existingProfiles = gson.fromJson(
-                    new FileReader(PROFILES_FILE_PATH),
+            List<Profile> existingProfiles = gson.fromJson(new FileReader(PROFILES_FILE_PATH),
                     new TypeToken<ArrayList<Profile>>() {
                     }.getType());
             profileRepository.deleteAll();
             profileRepository.saveAll(existingProfiles);
+
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
@@ -228,5 +207,13 @@ public class ProfileCreationService {
             throw new IllegalArgumentException("List argument cannot be null or empty");
         }
         return list.get(ThreadLocalRandom.current().nextInt(list.size()));
+    }
+
+    public ProfileCreationService(ChatClient chatClient, ProfileTools profileTools,
+            ProfileRepository profileRepository, RestClient restClient) {
+        this.chatClient = chatClient;
+        this.profileTools = profileTools;
+        this.profileRepository = profileRepository;
+        this.restClient = restClient;
     }
 }

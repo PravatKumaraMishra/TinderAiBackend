@@ -8,19 +8,20 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ProfileTools {
-    List<Profile> generatedProfiles = new ArrayList<>();
+    private final List<GenerateProfileResponse> generatedProfiles = new ArrayList<>();
 
-    @Tool(description = "Save the profile information by providing only firstName, lastName, age, ethnicity, gender, bio, myersBriggsPersonalityType. Id and imageUrl should be null")
-    public List<Profile> saveProfile(Profile profile) {
-        System.out.println("Proof it is called by openai");
+    @Tool(description = "Save the profile information by providing firstName, lastName, bio, myersBriggsPersonalityType.")
+    public String saveProfile(GenerateProfileResponse profile) {
+        System.out.println("Tool called by LLM");
         System.out.println(profile);
         if (profile != null) {
             this.generatedProfiles.add(profile);
+            return "Profile saved successfully.";
         }
-        return generatedProfiles;
+        return "Profile was null and was not saved.";
     }
 
-    public List<Profile> getGeneratedProfiles() {
-        return generatedProfiles;
+    public List<GenerateProfileResponse> getGeneratedProfiles() {
+        return List.copyOf(generatedProfiles);
     }
 }
