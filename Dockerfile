@@ -6,6 +6,7 @@ FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
 COPY pom.xml .
+COPY profiles.json .
 RUN --mount=type=cache,target=/root/.m2 \
     mvn -B dependency:go-offline
 
@@ -19,6 +20,8 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 COPY --from=build /app.jar app.jar
+COPY --from=build /app/profiles.json profiles.json
+COPY --from=build /app/src/main/resources/static/images src/main/resources/static/images
 
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

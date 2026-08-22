@@ -31,8 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
-src/main/resources/static/
-profiles.json
 src/main/resources/.DS_Store
 src/.DS_Store
 .gitignore
@@ -40,3 +38,4 @@ src/.DS_Store
 .DS_Store
 .DS_Store
 local.env
+dev.env

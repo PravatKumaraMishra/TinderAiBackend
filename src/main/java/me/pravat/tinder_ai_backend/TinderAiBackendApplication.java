@@ -22,7 +22,7 @@ public class TinderAiBackendApplication implements CommandLineRunner {
 	@Override
 	public void run(String... args) {
 		try {
-			profileCreationService.createProfiles(5);
+			profileCreationService.createProfiles(1);
 			profileCreationService.saveProfilesToDB();
 		} catch (Exception e) {
 			System.err.println("Profile initialization failed:");

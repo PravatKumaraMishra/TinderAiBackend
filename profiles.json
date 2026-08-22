@@ -1,0 +1,211 @@
+[
+  {
+    "id": "93d74e2c-88d4-4d96-9c1a-122f28e1271b",
+    "firstName": "Ananya",
+    "lastName": "Rao",
+    "age": 26,
+    "ethnicity": "Kannadiga",
+    "gender": "FEMALE",
+    "bio": "Kannada girl from Bengaluru 🌿 Love filter coffee, masala dosa, and spontaneous road trips to Coorg. Software engineer by day, Bharatanatyam dancer by night. Looking for someone who appreciates good music, bad puns, and can handle my spice tolerance. Let\u0027s explore the city together!",
+    "imageUrl": "93d74e2c-88d4-4d96-9c1a-122f28e1271b.png",
+    "myersBriggsPersonalityType": "ENFJ"
+  },
+  {
+    "id": "69e4826b-616c-4ebf-a6d7-abd71c157f4f",
+    "firstName": "Ananya",
+    "lastName": "Rao",
+    "age": 29,
+    "ethnicity": "Kannadiga",
+    "gender": "FEMALE",
+    "bio": "Software engineer by day, foodie by night. Love exploring new cafés, traveling, and trying out Kannadiga cuisine. Looking for someone who appreciates good conversation and spontaneous adventures.",
+    "imageUrl": "69e4826b-616c-4ebf-a6d7-abd71c157f4f.png",
+    "myersBriggsPersonalityType": "INFJ"
+  },
+  {
+    "id": "1630bb79-a19d-4851-8cb1-63cde4fbc48c",
+    "firstName": "Ananya",
+    "lastName": "Singh",
+    "age": 23,
+    "ethnicity": "Rajasthani",
+    "gender": "FEMALE",
+    "bio": "Lover of desert sunsets, folk music, and spicy chaat. Always up for a camel ride or a good book under the stars. Swipe right if you enjoy vibrant culture and spontaneous adventures.",
+    "imageUrl": "1630bb79-a19d-4851-8cb1-63cde4fbc48c.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "c4072eee-dcdf-4496-905b-4e371f03f477",
+    "firstName": "Priya",
+    "lastName": "Sharma",
+    "age": 21,
+    "ethnicity": "Bihari",
+    "gender": "FEMALE",
+    "bio": "Adventure seeker and foodie! Love exploring new places, trying local dishes, and dancing to Bollywood beats. Looking for someone who can keep up with my energy and share good vibes.",
+    "imageUrl": "c4072eee-dcdf-4496-905b-4e371f03f477.png",
+    "myersBriggsPersonalityType": "ENFJ"
+  },
+  {
+    "id": "98d567bb-91ee-4e4e-8109-15d112976aa4",
+    "firstName": "Ananya",
+    "lastName": "Reddy",
+    "age": 20,
+    "ethnicity": "Telugu",
+    "gender": "FEMALE",
+    "bio": "20 | Telugu-American | 🎶 Music \u0026 dance junkie | Bollywood \u0026 K-pop beats | 🌸 Foodie at heart | Let’s explore the world one filter at a time. DM me for playlist recommendations!",
+    "imageUrl": "98d567bb-91ee-4e4e-8109-15d112976aa4.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "c3d54c43-03a0-49db-bd5d-c96c5b537b92",
+    "firstName": "Ananya",
+    "lastName": "Menon",
+    "age": 25,
+    "ethnicity": "Malayali",
+    "gender": "FEMALE",
+    "bio": "Ananya is a curious soul who loves exploring new cafés, binge‑watching Malayalam dramas, and planning spontaneous weekend getaways to the Western Ghats. When she’s not chasing adventures, you’ll find her lost in a good book or experimenting with traditional Kerala recipes in her kitchen.",
+    "imageUrl": "c3d54c43-03a0-49db-bd5d-c96c5b537b92.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "3e66feb3-eb32-4518-af1a-cfe0cc8487ea",
+    "firstName": "Zara",
+    "lastName": "Wani",
+    "age": 20,
+    "ethnicity": "Kashmiri",
+    "gender": "FEMALE",
+    "bio": "Hi there! I\u0027m Zara, a 20-year-old from the beautiful valley of Kashmir. I love exploring ancient wooden markets, trekking through snow-capped mountains, and finding hidden cafes with amazing local chai. When I\u0027m not studying or traveling, I spend my time drawing mandalas, writing poetry about our stunning landscapes, and connecting with people who appreciate art and culture. Looking for someone who shares my passion for adventure, meaningful conversations, and that warm Kashmiri hospitality! ☕⛰️✨",
+    "imageUrl": "3e66feb3-eb32-4518-af1a-cfe0cc8487ea.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "ac800d58-8e03-4d24-988a-bdf618c30d73",
+    "firstName": "Simran",
+    "lastName": "Kaur",
+    "age": 22,
+    "ethnicity": "Punjabi",
+    "gender": "FEMALE",
+    "bio": "22 | Punjabi | ENFJ-T | Lover of Bollywood, home-cooked langar, and finding the best butter chicken in town 🍛✨ Swipe right if you can handle my mom\u0027s matchmaking attempts and my dog\u0027s Instagram obsession! ",
+    "imageUrl": "ac800d58-8e03-4d24-988a-bdf618c30d73.png",
+    "myersBriggsPersonalityType": "ENFJ-T"
+  },
+  {
+    "id": "f0d7e02f-6e12-413f-bd49-524bd78bb98b",
+    "firstName": "Riya",
+    "lastName": "Barman",
+    "age": 20,
+    "ethnicity": "Assamese",
+    "gender": "FEMALE",
+    "bio": "Passionate about Assamese culture, love exploring tea gardens, foodie, aspiring writer, loves dancing to Bihu beats. Looking for someone to share adventures and late-night chats.",
+    "imageUrl": "f0d7e02f-6e12-413f-bd49-524bd78bb98b.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "dd36143c-3590-4e3b-96b3-7298aa0ff5da",
+    "firstName": "Priya",
+    "lastName": "Sharma",
+    "age": 25,
+    "ethnicity": "Bengali",
+    "gender": "FEMALE",
+    "bio": "25-year-old Bengali woman looking for meaningful connections and adventures. Love traveling, good food, and deep conversations. Happy to share more in messages! 😊",
+    "imageUrl": "dd36143c-3590-4e3b-96b3-7298aa0ff5da.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "c0c6237b-8c1a-4142-9ca3-303aa1fe55c5",
+    "firstName": "Anjali",
+    "lastName": "Deshmukh",
+    "age": 22,
+    "ethnicity": "Marathi",
+    "gender": "FEMALE",
+    "bio": "Marathi mulgi 🌸 | 22 | Coffee addict ☕ | Love exploring Pune\u0027s hidden cafes and trekking Sahyadris 🏞️ | ENFP - spontaneous, empathetic, always up for deep convos or silly dances 💃 | Swipe right if you can handle my spicy misal pav tolerance 🌶️ | Let\u0027s make memories!",
+    "imageUrl": "c0c6237b-8c1a-4142-9ca3-303aa1fe55c5.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "d3094e16-fdbe-411f-9883-7995cc341f5f",
+    "firstName": "Anaya",
+    "lastName": "Sharma",
+    "age": 26,
+    "ethnicity": "Indian",
+    "gender": "FEMALE",
+    "bio": "Adventure seeker, chai enthusiast, and all things cultural. Looking for someone to explore life\u0027s little joys with!",
+    "imageUrl": "d3094e16-fdbe-411f-9883-7995cc341f5f.png",
+    "myersBriggsPersonalityType": "ENFP"
+  },
+  {
+    "id": "c7fde06b-9685-4e6e-81fc-803bddc5b60a",
+    "firstName": "Priya",
+    "lastName": "Das",
+    "age": 29,
+    "ethnicity": "Odia",
+    "gender": "FEMALE",
+    "bio": "Odia culture enthusiast! Love exploring traditional cuisine, poetry, and nature. Seeking someone who appreciates deep conversations and shared laughter. 🌿✨",
+    "imageUrl": "c7fde06b-9685-4e6e-81fc-803bddc5b60a.png",
+    "myersBriggsPersonalityType": "INFP"
+  },
+  {
+    "id": "8886c1ed-855c-4acb-84eb-0146cbe2f584",
+    "firstName": "Ananya",
+    "lastName": "Reddy",
+    "age": 21,
+    "ethnicity": "Telugu",
+    "gender": "FEMALE",
+    "bio": "Telugu girl with a heart full of dreams and a soul that dances to her own rhythm. Looking for someone to share life\u0027s adventures with. 🌸✨",
+    "imageUrl": "8886c1ed-855c-4acb-84eb-0146cbe2f584.png",
+    "myersBriggsPersonalityType": "INFP"
+  },
+  {
+    "id": "da45f2d0-1f8a-4d91-99e2-8030b41f84b4",
+    "firstName": "Anjali",
+    "lastName": "Menon",
+    "age": 28,
+    "ethnicity": "Malayali",
+    "gender": "FEMALE",
+    "bio": "Malayali girl who loves spices, road trips, and trying new cafes. Looking for someone who can match my energy and maybe teach me a new recipe! 🍛✨",
+    "imageUrl": "da45f2d0-1f8a-4d91-99e2-8030b41f84b4.png",
+    "myersBriggsPersonalityType": "ENFJ"
+  },
+  {
+    "id": "e0410e7f-6338-4dd2-a877-e7e5948d972f",
+    "firstName": "Priya",
+    "lastName": "Verma",
+    "age": 30,
+    "ethnicity": "Bihari",
+    "gender": "FEMALE",
+    "bio": "Proud Bihari | Food enthusiast who makes the best litti chokha this side of Patna | MBA dropout turned entrepreneur running a sustainable fashion brand | INFP who cries at Google ads but will happily debate you on why Bihar has the best cuisine in India | Weekend spent either hiking in the Western Ghats or perfecting my mother\u0027s dal-bhat recipe | Looking for someone who can appreciate a good Bollywood dance number and won\u0027t judge my collection of 12 different dupattas | Swipe right if you can handle my terrible puns and amazing cooking skills",
+    "imageUrl": "e0410e7f-6338-4dd2-a877-e7e5948d972f.png",
+    "myersBriggsPersonalityType": "INFP"
+  },
+  {
+    "id": "497574ce-ce38-49b2-9f0f-2f90d308a74d",
+    "firstName": "Meera",
+    "lastName": "Das",
+    "age": 28,
+    "ethnicity": "Bengali",
+    "gender": "FEMALE",
+    "bio": "Bengali food enthusiast, loves exploring new places, and enjoys spending time with friends and family. Myers Briggs: INFJ. Seeking someone who appreciates culture and meaningful conversations.",
+    "imageUrl": "497574ce-ce38-49b2-9f0f-2f90d308a74d.png",
+    "myersBriggsPersonalityType": "INFJ"
+  },
+  {
+    "id": "b548e29f-6181-45f1-96fd-9114baed3704",
+    "firstName": "Aisha",
+    "lastName": "Mir",
+    "age": 27,
+    "ethnicity": "Kashmiri",
+    "gender": "FEMALE",
+    "bio": "Kashmiri girl with a love for mountains, chai, and capturing sunsets through my lens 📸🏔️. INFJ dreamer who believes in deep connections and late-night conversations. Let\u0027s explore Srinagar\u0027s hidden gems together? ✨",
+    "imageUrl": "b548e29f-6181-45f1-96fd-9114baed3704.png",
+    "myersBriggsPersonalityType": "INFJ"
+  },
+  {
+    "id": "da5787fe-ddc9-40a0-815e-7ad6d63fba6f",
+    "firstName": "Ananya",
+    "lastName": "Ramaswamy",
+    "age": 22,
+    "ethnicity": "Tamilian",
+    "gender": "FEMALE",
+    "bio": "Chennai girl living in the city 🏙️ | Filter coffee enthusiast ☕ | Probably listening to AR Rahman on loop 🎶 | Into classical dance and modern chaos. Looking for someone who can keep up with my wit and doesn\u0027t mind a bit of family drama! ✨",
+    "imageUrl": "da5787fe-ddc9-40a0-815e-7ad6d63fba6f.png",
+    "myersBriggsPersonalityType": "ENFP"
+  }
+]
