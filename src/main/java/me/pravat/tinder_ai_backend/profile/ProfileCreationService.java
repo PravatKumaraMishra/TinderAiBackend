@@ -2,8 +2,6 @@ package me.pravat.tinder_ai_backend.profile;
 
 import static me.pravat.tinder_ai_backend.Utils.selfieTypes;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -18,7 +16,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import com.google.gson.Gson;
@@ -48,9 +45,6 @@ public class ProfileCreationService {
 
     @Value("${tinderai.ethnicities}")
     private List<String> ethnicities;
-
-    @Value("#{${tinderai.character.user}}")
-    private Map<String, String> userProfileProperties;
 
     @Value("${pixazo.api-key}")
     private String pixazoApiKey;
@@ -174,32 +168,12 @@ public class ProfileCreationService {
         }
     }
 
-    @Transactional
     public void saveProfilesToDB() {
-        Gson gson = new Gson();
-        try {
-            List<Profile> existingProfiles = gson.fromJson(new FileReader(PROFILES_FILE_PATH),
-                    new TypeToken<ArrayList<Profile>>() {
-                    }.getType());
-            profileRepository.deleteAll();
-            profileRepository.saveAll(existingProfiles);
-
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
+        for (Profile profile : readExistingProfiles()) {
+            if (profile != null && !profileRepository.existsById(profile.id())) {
+                profileRepository.insert(profile);
+            }
         }
-
-        Profile profile = new Profile(
-                userProfileProperties.get("id"),
-                userProfileProperties.get("firstName"),
-                userProfileProperties.get("lastName"),
-                Integer.parseInt(userProfileProperties.get("age")),
-                userProfileProperties.get("ethnicity"),
-                Gender.valueOf(userProfileProperties.get("gender")),
-                userProfileProperties.get("bio"),
-                userProfileProperties.get("imageUrl"),
-                userProfileProperties.get("myersBriggsPersonalityType"));
-        var savedProfile = profileRepository.save(profile);
-        System.out.println(savedProfile);
     }
 
     private static <T> T getRandomElement(List<T> list) {
