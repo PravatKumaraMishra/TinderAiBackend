@@ -15,11 +15,11 @@ public class UserController {
     @GetMapping
     public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
         UserAccount account = service.get(jwt.getSubject());
-        return new UserResponse(account.id(), account.email(), account.profile());
+        return new UserResponse(account.id(), account.email(), account.profile(), account.googleSubject() != null);
     }
     @PutMapping("/profile")
     public Profile update(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ProfileRequest request) {
         return service.updateProfile(jwt.getSubject(), request);
     }
-    public record UserResponse(String id, String email, Profile profile) {}
+    public record UserResponse(String id, String email, Profile profile, boolean googleLinked) {}
 }

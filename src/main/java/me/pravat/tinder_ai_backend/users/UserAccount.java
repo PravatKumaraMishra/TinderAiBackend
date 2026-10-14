@@ -8,5 +8,10 @@ import me.pravat.tinder_ai_backend.profile.Profile;
 
 @Document("users")
 public record UserAccount(String id, @Indexed(unique = true) String email,
-                          @JsonIgnore String passwordHash, Profile profile, Instant createdAt) {
+                          @JsonIgnore String passwordHash, Profile profile, Instant createdAt,
+                          @JsonIgnore @Indexed(unique = true,
+                                  partialFilter = "{'googleSubject': {$type: 'string'}}") String googleSubject) {
+    public UserAccount(String id, String email, String passwordHash, Profile profile, Instant createdAt) {
+        this(id, email, passwordHash, profile, createdAt, null);
+    }
 }
