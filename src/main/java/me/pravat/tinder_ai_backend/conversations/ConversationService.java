@@ -11,6 +11,8 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.OptimisticLockingFailureException;
+import me.pravat.tinder_ai_backend.users.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,29 +22,34 @@ import me.pravat.tinder_ai_backend.profile.ProfileRepository;
 @Service
 public class ConversationService {
 
+    private final UserService userService;
     private final ChatClient chatClient;
     private final ProfileRepository profileRepository;
     private final ConversationRepository conversationRepository;
 
-    public Conversation addMessage(String conversationId, ChatMessage chatMessage) {
+    public Conversation addMessage(String userId, String conversationId, String messageText) {
 
-        Conversation conversation = conversationRepository.findById(conversationId)
+        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Unable to find conversation with ID " + conversationId));
 
         Profile profile = profileRepository.findById(conversation.profileId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Unable to find profile with ID " + conversation.profileId()));
+                        "Unable to find the conversation profile"));
 
-        Profile user = profileRepository.findById(chatMessage.authorId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Unable to find profile with ID " + chatMessage.authorId()));
-
-        conversation.messages()
-                .add(new ChatMessage(chatMessage.messageText(), chatMessage.authorId(), LocalDateTime.now()));
+        Profile user = userService.getProfile(userId);
+        // Work on a copy so failed AI calls do not mutate the fetched document.
+        conversation = new Conversation(conversation.id(), conversation.userId(), conversation.profileId(),
+                new ArrayList<>(conversation.messages()), conversation.version());
+        conversation.messages().add(new ChatMessage(messageText, userId, LocalDateTime.now()));
 
         generateProfileResponse(conversation, profile, user);
-        return conversationRepository.save(conversation);
+        try {
+            return conversationRepository.save(conversation);
+        } catch (OptimisticLockingFailureException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Conversation changed while generating the reply; reload before sending again");
+        }
     }
 
     public Conversation generateProfileResponse(Conversation conversation, Profile profile, Profile user) {
@@ -129,7 +136,8 @@ public class ConversationService {
     }
 
     public ConversationService(ChatClient chatClient, ProfileRepository profileRepository,
-            ConversationRepository conversationRepository) {
+            ConversationRepository conversationRepository, UserService userService) {
+        this.userService = userService;
         this.chatClient = chatClient;
         this.profileRepository = profileRepository;
         this.conversationRepository = conversationRepository;
