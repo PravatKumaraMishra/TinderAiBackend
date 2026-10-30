@@ -106,20 +106,44 @@ class TinderAiBackendApplicationTests {
 
     @Test void profileGenerationRequiresAdmin() throws Exception {
         mvc.perform(post("/admin/profiles/generate").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"count\":1}")).andExpect(status().isUnauthorized());
+                .content("{\"count\":1,\"minAge\":25,\"maxAge\":30,\"ethnicities\":[\"Indian\"]}")).andExpect(status().isUnauthorized());
         mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("bob"))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1,\"minAge\":25,\"maxAge\":30,\"ethnicities\":[\"Indian\"]}"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(profileCreation);
-        when(profileCreation.generateProfiles(1)).thenReturn(List.of(profile("new-persona")));
+        when(profileCreation.generateProfiles(1, 25, 30, List.of("Indian"))).thenReturn(List.of(profile("new-persona")));
         mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1,\"minAge\":25,\"maxAge\":30,\"ethnicities\":[\"Indian\"]}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$[0].id").value("new-persona"));
-        verify(profileCreation).generateProfiles(1);
+        verify(profileCreation).generateProfiles(1, 25, 30, List.of("Indian"));
     }
 
     @Test void invalidGenerationCountDoesNotCallProvider() throws Exception {
         for (String body : List.of("{}", "{\"count\":0}", "{\"count\":6}", "{\"count\":-1}")) {
+            mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(profileCreation);
+    }
+
+    @Test void omittedGenerationSettingsUseConfiguredDefaultsIndependently() throws Exception {
+        for (String body : List.of("{\"count\":1}",
+                "{\"count\":1,\"minAge\":null,\"maxAge\":null,\"ethnicities\":null}")) {
+            mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isCreated());
+        }
+        verify(profileCreation, times(2)).generateProfiles(1, 18, 35, List.of("Indian"));
+        mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1,\"minAge\":25}"))
+                .andExpect(status().isCreated());
+        verify(profileCreation).generateProfiles(1, 25, 35, List.of("Indian"));
+    }
+
+    @Test void invalidGenerationSettingsDoNotCallProvider() throws Exception {
+        for (String body : List.of(
+                "{\"count\":1,\"minAge\":17,\"maxAge\":30,\"ethnicities\":[\"Indian\"]}",
+                "{\"count\":1,\"minAge\":30,\"maxAge\":25,\"ethnicities\":[\"Indian\"]}",
+                "{\"count\":1,\"minAge\":25,\"maxAge\":30,\"ethnicities\":[]}")) {
             mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
                     .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
         }

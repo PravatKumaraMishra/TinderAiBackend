@@ -26,41 +26,15 @@ import com.google.gson.reflect.TypeToken;
 public class ProfileCreationService {
 
     private final ChatClient chatClient;
-    private final ProfileTools profileTools;
     private static final String PROFILES_FILE_PATH = "profiles.json";
     private final ProfileRepository profileRepository;
     private final RestClient restClient;
 
-    @Value("${startup-actions.initializeProfiles:false}")
-    private boolean initializedProfiles;
-
-    @Value("${tinderai.minAge}")
-    private int minAge;
-
-    @Value("${tinderai.maxAge}")
-    private int maxAge;
-
-    @Value("${tinderai.ethnicities}")
-    private List<String> ethnicities;
-
     @Value("${pixazo.api-key}")
     private String pixazoApiKey;
 
-    public void createProfiles(int numberOfProfiles) {
-        if (initializedProfiles) {
-            return;
-        }
-
-        while (profileTools.getGeneratedProfiles().size() < numberOfProfiles) {
-            String ethnicity = getRandomElement(ethnicities);
-            int age = ThreadLocalRandom.current().nextInt(minAge, maxAge + 1);
-            generateProfile(ethnicity, age);
-        }
-        saveProfileToJson(profileTools.getGeneratedProfiles());
-    }
-
-    /** Generate a fresh batch independently of the startup seeding flag and tool state. */
-    public synchronized List<Profile> generateProfiles(int count) {
+    public synchronized List<Profile> generateProfiles(int count, int minAge, int maxAge, List<String> ethnicities) {
+        validateSettings(minAge, maxAge, ethnicities);
         if (count < 1 || count > 5) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, "count must be between 1 and 5");
@@ -105,29 +79,12 @@ public class ProfileCreationService {
         writeProfiles(all);
     }
 
-    private void generateProfile(String ethnicity, int age) {
-        String prompt = buildProfilePrompt(ethnicity, age);
-        chatClient.prompt(prompt).tools(profileTools).call().content();
-    }
-
     private String buildProfilePrompt(String ethnicity, int age) {
         return """
                 Create a Tinder profile persona for a %s %d year old %s.
                 Include firstName, lastName, myersBriggsPersonalityType, bio.
                 After generating the profile, call the saveProfile tool.
                 """.formatted(ethnicity, age, ThreadLocalRandom.current().nextBoolean() ? "male" : "female");
-    }
-
-    private void saveProfileToJson(List<GenerateProfileResponse> generatedProfiles) {
-        List<Profile> existingProfiles = readExistingProfiles();
-
-        List<Profile> profiles = generatedProfiles.stream().map((profile) -> generateProfileImage(profile))
-                .toList();
-
-        List<Profile> allProfiles = new ArrayList<>();
-        allProfiles.addAll(profiles);
-        allProfiles.addAll(existingProfiles);
-        writeProfiles(allProfiles);
     }
 
     private Profile generateProfileImage(GenerateProfileResponse profile) {
@@ -211,11 +168,15 @@ public class ProfileCreationService {
         }
     }
 
-    public void saveProfilesToDB() {
-        for (Profile profile : readExistingProfiles()) {
-            if (profile != null && !profileRepository.existsById(profile.id())) {
-                profileRepository.insert(profile);
-            }
+    public static void validateSettings(Integer minAge, Integer maxAge, List<String> ethnicities) {
+        if (minAge == null || maxAge == null || minAge < 18 || maxAge > 120 || minAge > maxAge) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "ages must satisfy 18 <= minAge <= maxAge <= 120");
+        }
+        if (ethnicities == null || ethnicities.isEmpty()
+                || ethnicities.stream().anyMatch(value -> value == null || value.isBlank())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "ethnicities must contain nonblank values");
         }
     }
 
@@ -226,10 +187,9 @@ public class ProfileCreationService {
         return list.get(ThreadLocalRandom.current().nextInt(list.size()));
     }
 
-    public ProfileCreationService(ChatClient chatClient, ProfileTools profileTools,
+    public ProfileCreationService(ChatClient chatClient,
             ProfileRepository profileRepository, RestClient restClient) {
         this.chatClient = chatClient;
-        this.profileTools = profileTools;
         this.profileRepository = profileRepository;
         this.restClient = restClient;
     }

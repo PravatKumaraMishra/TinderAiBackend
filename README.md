@@ -25,7 +25,7 @@ shell-compatible environment file, or configure your IDE. Creating `.env` alone
 does not load it for Maven. MongoDB credentials belong in `DATASOURCE_URL`.
 
 The default port is 8080. Configure frontend `VITE_BACKEND_URL=http://localhost:8080`.
-Run seeding commands from the repository root so `profiles.json` can be found.
+Run from the repository root to keep the generated `profiles.json` in a predictable location.
 
 ## Configuration
 
@@ -41,8 +41,6 @@ Add:
 | `JWT_ACCESS_TOKEN_TTL` | `30m`; positive and at most one hour |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins; localhost ports 3000 and 5173 by default |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web client ID; supplied public client ID is configured as the default |
-| `SEED_PROFILES` | `false`; explicitly enable to load missing personas from `profiles.json` |
-| `PROFILE_INITIALIZATION_STATUS` | `true`; existing behavior: false generates a new persona when seeding is enabled |
 
 Generate a secret once with `openssl rand -base64 32`, store it outside Git, and reuse it
 across restarts and application instances. Changing it invalidates existing tokens.
@@ -168,7 +166,7 @@ performed by the code change itself.
 The migration fails before writing if the designated account does not exist. It can
 be rerun after a partial interruption. It is not a multi-document transaction; perform
 it during maintenance. If old data violates a unique index, resolve those duplicates
-before migration. Leave `SEED_PROFILES=false` while migrating.
+before migration.
 
 ## Frontend integration
 
@@ -230,13 +228,19 @@ Removing an ID and restarting removes its access even for an existing JWT.
 curl -X POST https://your-backend-domain.com/admin/profiles/generate \
   -H "Authorization: Bearer <your-access-token>" \
   -H "Content-Type: application/json" \
-  -d '{"count": 1}'
+  -d '{"count": 1, "minAge": 25, "maxAge": 30, "ethnicities": ["Indian"]}'
 ```
 
 Returns `201` with an array of newly created profiles. Missing authentication returns
 `401`; authenticated non-admins receive `403`. `count` is required and must be 1–5,
-otherwise the response is `400`. This endpoint generates immediately regardless of
-`SEED_PROFILES` or `PROFILE_INITIALIZATION_STATUS`.
+otherwise the response is `400`. `minAge`, `maxAge`, and `ethnicities` are optional. Omitted or null fields use
+`tinderai.minAge` (18), `tinderai.maxAge` (35), and `tinderai.ethnicities` (Indian)
+from `application.properties`, respectively. Each field can be overridden independently.
+For the effective settings: ages must satisfy `18 <= minAge <= maxAge <= 120`, and ethnicities must
+be a nonempty array of nonblank strings. Invalid settings return `400` before any
+provider call. Startup seeding and its environment variables have been removed.
+`MIN_AGE`, `MAX_AGE`, and `ETHNICITIES` optionally override the server defaults;
+`PIXAZO_API_KEY` remains a server-side secret.
 
 Generation is synchronous and can take time; configure the calling client's/proxy's
 timeout accordingly. Calls are serialized within each backend instance. The AI tool

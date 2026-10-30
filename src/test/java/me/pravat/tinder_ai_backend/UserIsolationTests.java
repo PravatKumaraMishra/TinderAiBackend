@@ -88,14 +88,4 @@ class UserIsolationTests {
                 any(org.springframework.data.mongodb.core.query.Update.class), eq(Conversation.class));
         verify(mongo, never()).remove(any(org.springframework.data.mongodb.core.query.Query.class), eq(Profile.class));
     }
-    @Test void startupSeedingPreservesExistingPersonas() {
-        ProfileRepository profiles = mock(ProfileRepository.class);
-        when(profiles.existsById(anyString())).thenReturn(true);
-        var service = new ProfileCreationService(mock(ChatClient.class), mock(ProfileTools.class),
-                profiles, mock(org.springframework.web.client.RestClient.class));
-        service.saveProfilesToDB();
-        verify(profiles, never()).deleteAll();
-        verify(profiles, never()).saveAll(any());
-        verify(profiles, never()).insert(any(Profile.class));
-    }
 }
