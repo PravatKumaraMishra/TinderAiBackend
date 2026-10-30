@@ -217,3 +217,35 @@ Official references:
 - [Nimbus JWT encoder builder](https://docs.spring.io/spring-security/reference/api/java/org/springframework/security/oauth2/jwt/NimbusJwtEncoder.html)
 - [Google ID token verification](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
 - [Google sign-in button](https://developers.google.com/identity/gsi/web/guides/display-button)
+
+## Admin profile generation
+
+Register or sign in, call `GET /users/me`, and copy the account's `id`. Configure
+`ADMIN_USER_IDS` on the backend with a comma-separated list of trusted account IDs,
+then restart/redeploy. The default is empty: no account has admin access. Account
+IDs are checked on each request; clients cannot assign themselves admin access.
+Removing an ID and restarting removes its access even for an existing JWT.
+
+```sh
+curl -X POST https://your-backend-domain.com/admin/profiles/generate \
+  -H "Authorization: Bearer <your-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"count": 1}'
+```
+
+Returns `201` with an array of newly created profiles. Missing authentication returns
+`401`; authenticated non-admins receive `403`. `count` is required and must be 1–5,
+otherwise the response is `400`. This endpoint generates immediately regardless of
+`SEED_PROFILES` or `PROFILE_INITIALIZATION_STATUS`.
+
+Generation is synchronous and can take time; configure the calling client's/proxy's
+timeout accordingly. Calls are serialized within each backend instance. The AI tool
+gets at most three attempts per requested profile if it does not return a profile.
+Provider/image failures return `502`; successfully inserted profiles before a failure
+remain in MongoDB, so check discovery before retrying after failure or timeout.
+
+Profiles are inserted into MongoDB and the completed batch is appended to the local
+`profiles.json`. Images continue to be written to `src/main/resources/static/images`
+and served at `/images/<filename>`, including when running the packaged JAR. Local
+JSON and images require a writable working directory and retain the existing storage
+lifetime. A local JSON write failure can occur after profiles have been saved to MongoDB.

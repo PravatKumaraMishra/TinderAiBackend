@@ -62,6 +62,52 @@ public class ProfileCreationService {
         saveProfileToJson(profileTools.getGeneratedProfiles());
     }
 
+    /** Generate a fresh batch independently of the startup seeding flag and tool state. */
+    public synchronized List<Profile> generateProfiles(int count) {
+        if (count < 1 || count > 5) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "count must be between 1 and 5");
+        }
+        ProfileTools batchTools = new ProfileTools();
+        List<Profile> created = new ArrayList<>();
+        // Bound attempts when the provider fails to call the tool.
+        for (int attempt = 0; attempt < count * 3 && created.size() < count; attempt++) {
+            int previous = batchTools.getGeneratedProfiles().size();
+            try {
+                chatClient.prompt(buildProfilePrompt(getRandomElement(ethnicities),
+                        ThreadLocalRandom.current().nextInt(minAge, maxAge + 1)))
+                        .tools(batchTools).call().content();
+                for (GenerateProfileResponse generated : batchTools.getGeneratedProfiles().subList(
+                        previous, batchTools.getGeneratedProfiles().size())) {
+                    if (created.size() == count) break;
+                    Profile profile = generateProfileImage(generated);
+                    if (profile == null) {
+                        throw new IllegalStateException("Image generation failed");
+                    }
+                    profileRepository.insert(profile);
+                    created.add(profile);
+                }
+            } catch (Exception failure) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_GATEWAY,
+                        "Profile generation failed; " + created.size() + " profiles already saved", failure);
+            }
+        }
+        if (created.size() != count) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_GATEWAY,
+                    "AI did not produce enough profiles; " + created.size() + " profiles already saved");
+        }
+        saveGeneratedBatch(created);
+        return List.copyOf(created);
+    }
+
+    private void saveGeneratedBatch(List<Profile> created) {
+        List<Profile> all = new ArrayList<>(readExistingProfiles());
+        all.addAll(created);
+        writeProfiles(all);
+    }
+
     private void generateProfile(String ethnicity, int age) {
         String prompt = buildProfilePrompt(ethnicity, age);
         chatClient.prompt(prompt).tools(profileTools).call().content();

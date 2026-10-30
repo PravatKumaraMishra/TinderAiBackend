@@ -25,9 +25,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.junit.jupiter.api.Assertions.*;
 
 @WebMvcTest(controllers = {AuthController.class, UserController.class, MatchController.class,
-        ConversationController.class, ProfileController.class, GoogleAuthController.class}, properties = {
+        ConversationController.class, ProfileController.class, GoogleAuthController.class, AdminProfileController.class}, properties = {
         "security.jwt.secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        "security.jwt.issuer=test-issuer", "security.jwt.audience=test-api",
+        "security.admin.user-ids=alice", "security.jwt.issuer=test-issuer", "security.jwt.audience=test-api",
         "security.jwt.access-token-ttl=30m", "security.cors.allowed-origins=http://localhost:3000"})
 @Import({SecurityConfiguration.class, AuthService.class, TokenService.class, UserService.class,
         MatchService.class, ApiExceptionHandler.class})
@@ -41,6 +41,7 @@ class TinderAiBackendApplicationTests {
     @MockitoBean ConversationRepository conversations;
     @MockitoBean ConversationService conversationService;
     @MockitoBean GoogleAuthService googleAuth;
+    @MockitoBean ProfileCreationService profileCreation;
     @MockitoBean org.springframework.data.mongodb.core.MongoTemplate mongo;
     private final Map<String, UserAccount> accounts = new HashMap<>();
     private static final String PROFILE = """
@@ -69,6 +70,28 @@ class TinderAiBackendApplicationTests {
         return new Profile(id, "Alice", "Test", 25, "Indian", Gender.FEMALE, "Hello", "", "INTJ");
     }
     private String bearer(String user) { return "Bearer " + tokens.issue(user).accessToken(); }
+
+    @Test void profileGenerationRequiresAdmin() throws Exception {
+        mvc.perform(post("/admin/profiles/generate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"count\":1}")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("bob"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(profileCreation);
+        when(profileCreation.generateProfiles(1)).thenReturn(List.of(profile("new-persona")));
+        mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"count\":1}"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$[0].id").value("new-persona"));
+        verify(profileCreation).generateProfiles(1);
+    }
+
+    @Test void invalidGenerationCountDoesNotCallProvider() throws Exception {
+        for (String body : List.of("{}", "{\"count\":0}", "{\"count\":6}", "{\"count\":-1}")) {
+            mvc.perform(post("/admin/profiles/generate").header("Authorization", bearer("alice"))
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(profileCreation);
+    }
 
     @Test void registrationHashesPasswordAndLoginReturnsUsableJwt() throws Exception {
         mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(

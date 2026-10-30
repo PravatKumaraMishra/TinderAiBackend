@@ -9,6 +9,7 @@ public class StaticResourceConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("images/**")
-                .addResourceLocations("classpath:/static/images/");
+                .addResourceLocations(java.nio.file.Path.of("src/main/resources/static/images")
+                        .toAbsolutePath().toUri().toString() + "/", "classpath:/static/images/");
     }
 }

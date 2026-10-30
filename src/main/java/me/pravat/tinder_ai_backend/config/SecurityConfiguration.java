@@ -31,7 +31,8 @@ import me.pravat.tinder_ai_backend.users.UserRepository;
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfiguration {
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http,
+            @Value("${security.admin.user-ids:}") List<String> adminUserIds) throws Exception {
         return http.cors(Customizer.withDefaults())
                 // Authentication is exclusively an Authorization header, never a browser cookie.
                 .csrf(csrf -> csrf.disable())
@@ -40,6 +41,12 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/google").permitAll()
                         .requestMatchers(HttpMethod.GET, "/images/**", "/actuator/health").permitAll()
+                        .requestMatchers("/admin/**").access((authentication, context) -> {
+                            var principal = authentication.get();
+                            return new org.springframework.security.authorization.AuthorizationDecision(
+                                    principal instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
+                                    && principal.isAuthenticated() && adminUserIds.contains(principal.getName()));
+                        })
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()))
                 .build();
