@@ -71,6 +71,39 @@ class TinderAiBackendApplicationTests {
     }
     private String bearer(String user) { return "Bearer " + tokens.issue(user).accessToken(); }
 
+    @Test void discoveryUsesCurrentUsersGender() throws Exception {
+        for (Gender gender : List.of(Gender.MALE, Gender.FEMALE)) {
+            Gender target = gender == Gender.MALE ? Gender.FEMALE : Gender.MALE;
+            Profile own = new Profile("alice", "Alice", "Test", 25, "Indian", gender, "Hello", "", "INTJ");
+            accounts.put("alice", new UserAccount("alice", "alice@example.com", "", own, Instant.now()));
+            Profile persona = new Profile("persona", "AI", "Test", 25, "Indian", target, "Hello", "", "INTJ");
+            when(profiles.getRandomProfileByGender(target)).thenReturn(persona);
+            mvc.perform(get("/profiles/random").header("Authorization", bearer("alice"))
+                    .param("gender", gender.name()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.gender").value(target.name()));
+            verify(profiles).getRandomProfileByGender(target);
+        }
+    }
+
+    @Test void discoveryReportsEmptyPool() throws Exception {
+        mvc.perform(get("/profiles/random").header("Authorization", bearer("alice")))
+                .andExpect(status().isNotFound());
+        verify(profiles).getRandomProfileByGender(Gender.MALE);
+    }
+
+    @Test void discoveryRequiresExistingAccountAndCompletedSupportedProfile() throws Exception {
+        mvc.perform(get("/profiles/random").header("Authorization", bearer("deleted")))
+                .andExpect(status().isUnauthorized());
+        accounts.put("alice", new UserAccount("alice", "alice@example.com", "", null, Instant.now()));
+        mvc.perform(get("/profiles/random").header("Authorization", bearer("alice")))
+                .andExpect(status().isConflict());
+        Profile own = new Profile("alice", "Alice", "Test", 25, "Indian", Gender.NON_BINARY, "Hello", "", "INTJ");
+        accounts.put("alice", new UserAccount("alice", "alice@example.com", "", own, Instant.now()));
+        mvc.perform(get("/profiles/random").header("Authorization", bearer("alice")))
+                .andExpect(status().isUnprocessableEntity());
+        verifyNoInteractions(profiles);
+    }
+
     @Test void profileGenerationRequiresAdmin() throws Exception {
         mvc.perform(post("/admin/profiles/generate").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"count\":1}")).andExpect(status().isUnauthorized());

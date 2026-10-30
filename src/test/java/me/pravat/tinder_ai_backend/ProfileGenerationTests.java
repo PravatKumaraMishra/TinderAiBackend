@@ -19,15 +19,13 @@ class ProfileGenerationTests {
         ReflectionTestUtils.setField(service, "ethnicities", List.of("Indian"));
         ReflectionTestUtils.setField(service, "minAge", 25);
         ReflectionTestUtils.setField(service, "maxAge", 25);
-        ReflectionTestUtils.setField(service, "lookingForGender", "Female");
         ReflectionTestUtils.setField(service, "initializedProfiles", true);
+        var spec = ai.prompt("test");
+        when(ai.prompt(org.mockito.ArgumentMatchers.anyString())).thenReturn(spec);
         for (int i = 0; i < 2; i++) {
             var error = assertThrows(ResponseStatusException.class, () -> service.generateProfiles(1));
             assertEquals(502, error.getStatusCode().value());
         }
-        var spec = ai.prompt("Create a Tinder profile persona for a Indian 25 year old female.\n"
-                + "Include firstName, lastName, myersBriggsPersonalityType, bio.\n"
-                + "After generating the profile, call the saveProfile tool.\n");
         var tools = org.mockito.ArgumentCaptor.forClass(Object.class);
         verify(spec, times(6)).tools(tools.capture());
         assertSame(tools.getAllValues().get(0), tools.getAllValues().get(2));

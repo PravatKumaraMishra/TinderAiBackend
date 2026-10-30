@@ -34,9 +34,6 @@ public class ProfileCreationService {
     @Value("${startup-actions.initializeProfiles:false}")
     private boolean initializedProfiles;
 
-    @Value("${tinderai.lookingForGender}")
-    private String lookingForGender;
-
     @Value("${tinderai.minAge}")
     private int minAge;
 
@@ -118,7 +115,7 @@ public class ProfileCreationService {
                 Create a Tinder profile persona for a %s %d year old %s.
                 Include firstName, lastName, myersBriggsPersonalityType, bio.
                 After generating the profile, call the saveProfile tool.
-                """.formatted(ethnicity, age, lookingForGender.toLowerCase());
+                """.formatted(ethnicity, age, ThreadLocalRandom.current().nextBoolean() ? "male" : "female");
     }
 
     private void saveProfileToJson(List<GenerateProfileResponse> generatedProfiles) {
