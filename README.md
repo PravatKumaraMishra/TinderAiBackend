@@ -84,11 +84,19 @@ JWTs contain an account ID as subject, issuer, audience, issued-at, expiry, and 
 Verification checks signature/algorithm, issuer, audience, expiry, and account existence.
 Passwords and personal profile details are not placed in the JWT.
 
-This first version provides access tokens only. After expiry, sign in again.
-Client logout discards the token; an already issued token remains valid until expiry.
-There is no refresh-token flow, immediate logout revocation, password reset, or email
-verification yet. Keep tokens in frontend memory; if moving authentication to cookies,
-revisit CSRF protection (currently disabled only for header-based bearer authentication).
+Login, registration, and Google login set an HttpOnly refresh cookie and return an access token.
+`POST /auth/refresh` rotates the refresh secret and returns a new access token;
+`POST /auth/logout` revokes the refresh session and clears its cookie. Refresh secrets
+are SHA-256 hashed in MongoDB, have an absolute expiry (default seven days), and
+reuse of a rotated secret revokes that session family. MongoDB TTL removes expired records.
+Access tokens already issued remain valid until expiry after logout.
+All POST `/auth/*` requests must include an Origin in `CORS_ALLOWED_ORIGINS` (exact origins, no trailing slash).
+Browser clients must include credentials on these endpoints. Access tokens stay in memory.
+`COOKIE_SECURE` defaults to true; use false only for local HTTP development.
+`COOKIE_SAME_SITE` defaults to Lax; truly cross-site hosting requires None with HTTPS
+and may be restricted by browser third-party-cookie policies. Prefer same-site hosting.
+`REFRESH_TOKEN_TTL` defaults to 7d. Cookie endpoints use trusted-Origin checks for CSRF protection.
+Password reset and email verification are not implemented.
 
 ## Application endpoints
 
@@ -111,7 +119,7 @@ On a conversation conflict, reload before deciding whether to resend.
 An AI failure leaves the submitted message/reply unsaved.
 
 Only registration, password/Google login, `GET /images/**`, and `GET /actuator/health` are public.
-No session cookie or HTTP Basic login is enabled.
+API requests use bearer authentication; the refresh cookie is scoped to `/auth`. HTTP Basic login is disabled.
 
 ## Google sign-in
 

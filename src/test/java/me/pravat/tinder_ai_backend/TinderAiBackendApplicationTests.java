@@ -25,11 +25,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.junit.jupiter.api.Assertions.*;
 
 @WebMvcTest(controllers = {AuthController.class, UserController.class, MatchController.class,
-        ConversationController.class, ProfileController.class, GoogleAuthController.class, AdminProfileController.class}, properties = {
+        ConversationController.class, ProfileController.class, GoogleAuthController.class, AdminProfileController.class, SessionController.class}, properties = {
         "security.jwt.secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
         "security.admin.user-ids=alice", "security.jwt.issuer=test-issuer", "security.jwt.audience=test-api",
         "security.jwt.access-token-ttl=30m", "security.cors.allowed-origins=http://localhost:3000"})
-@Import({SecurityConfiguration.class, AuthService.class, TokenService.class, UserService.class,
+@Import({SecurityConfiguration.class, AuthService.class, TokenService.class, RefreshSessionService.class, UserService.class,
         MatchService.class, ApiExceptionHandler.class})
 class TinderAiBackendApplicationTests {
     @Autowired MockMvc mvc;
@@ -70,6 +70,17 @@ class TinderAiBackendApplicationTests {
         return new Profile(id, "Alice", "Test", 25, "Indian", Gender.FEMALE, "Hello", "", "INTJ");
     }
     private String bearer(String user) { return "Bearer " + tokens.issue(user).accessToken(); }
+
+    @Test void cookieEndpointsRejectMissingAndUntrustedOrigins() throws Exception {
+        for (String path : List.of("/auth/login", "/auth/refresh", "/auth/logout")) {
+            mvc.perform(post(path)).andExpect(status().isForbidden());
+            mvc.perform(post(path).header("Origin", "https://attacker.example")).andExpect(status().isForbidden());
+        }
+        mvc.perform(post("/auth/refresh").header("Origin", "http://localhost:3000"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/auth/logout").header("Origin", "http://localhost:3000"))
+                .andExpect(status().isNoContent()).andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
+    }
 
     @Test void discoveryUsesCurrentUsersGender() throws Exception {
         for (Gender gender : List.of(Gender.MALE, Gender.FEMALE)) {
@@ -151,13 +162,13 @@ class TinderAiBackendApplicationTests {
     }
 
     @Test void registrationHashesPasswordAndLoginReturnsUsableJwt() throws Exception {
-        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(
+        mvc.perform(post("/auth/register").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON).content(
                 "{\"email\":\"NEW@EXAMPLE.COM\",\"password\":\"a-strong-password\",\"profile\":" + PROFILE + "}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.accessToken").isString());
         UserAccount account = users.findByEmail("new@example.com").orElseThrow();
         assertNotEquals("a-strong-password", account.passwordHash());
         assertTrue(account.passwordHash().startsWith("{bcrypt}"));
-        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/auth/login").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"NEW@example.com\",\"password\":\"a-strong-password\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.tokenType").value("Bearer"));
         mvc.perform(get("/users/me").header("Authorization", bearer(account.id())))
@@ -165,15 +176,15 @@ class TinderAiBackendApplicationTests {
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
     }
     @Test void duplicateRegistrationConflicts() throws Exception {
-        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(
+        mvc.perform(post("/auth/register").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON).content(
                 "{\"email\":\"ALICE@example.com\",\"password\":\"a-strong-password\",\"profile\":" + PROFILE + "}"))
                 .andExpect(status().isConflict());
     }
     @Test void invalidRegistrationAndCredentialsAreRejected() throws Exception {
-        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/auth/register").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"bad\",\"password\":\"short\"}"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/auth/login").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"unknown@example.com\",\"password\":\"wrong-password\"}"))
                 .andExpect(status().isUnauthorized());
     }
@@ -208,10 +219,10 @@ class TinderAiBackendApplicationTests {
                 .andExpect(status().isUnauthorized());
     }
     @Test void wrongPasswordForRegisteredAccountIsRejected() throws Exception {
-        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(
+        mvc.perform(post("/auth/register").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON).content(
                 "{\"email\":\"new@example.com\",\"password\":\"a-strong-password\",\"profile\":" + PROFILE + "}"))
                 .andExpect(status().isCreated());
-        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/auth/login").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"new@example.com\",\"password\":\"wrong-password\"}"))
                 .andExpect(status().isUnauthorized());
     }
@@ -261,7 +272,7 @@ class TinderAiBackendApplicationTests {
     }
     @Test void googleLoginIsPublicAndLinkingRequiresAuthentication() throws Exception {
         when(googleAuth.login("google-credential")).thenReturn(tokens.issue("alice"));
-        mvc.perform(post("/auth/google").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/auth/google").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"credential\":\"google-credential\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").isString());
         mvc.perform(post("/users/me/google").contentType(MediaType.APPLICATION_JSON)

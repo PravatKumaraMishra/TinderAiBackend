@@ -32,14 +32,26 @@ import me.pravat.tinder_ai_backend.users.UserRepository;
 public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
-            @Value("${security.admin.user-ids:}") List<String> adminUserIds) throws Exception {
+            @Value("${security.admin.user-ids:}") List<String> adminUserIds,
+            @Value("${security.cors.allowed-origins}") List<String> origins) throws Exception {
         return http.cors(Customizer.withDefaults())
-                // Authentication is exclusively an Authorization header, never a browser cookie.
+                // API authentication uses bearer tokens. Cookie-backed auth endpoints require an explicit trusted Origin.
+                .addFilterBefore(new org.springframework.web.filter.OncePerRequestFilter() {
+                    @Override protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest request,
+                            jakarta.servlet.http.HttpServletResponse response, jakarta.servlet.FilterChain chain)
+                            throws java.io.IOException, jakarta.servlet.ServletException {
+                        if (request.getMethod().equals("POST") && request.getRequestURI().substring(request.getContextPath().length()).startsWith("/auth/")) {
+                            String origin = request.getHeader("Origin");
+                            if (origin == null || !origins.contains(origin)) { response.sendError(403); return; }
+                        }
+                        chain.doFilter(request, response);
+                    }
+                }, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(cache -> cache.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/google").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/google", "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/images/**", "/actuator/health").permitAll()
                         .requestMatchers("/admin/**").access((authentication, context) -> {
                             var principal = authentication.get();
@@ -95,7 +107,7 @@ public class SecurityConfiguration {
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
