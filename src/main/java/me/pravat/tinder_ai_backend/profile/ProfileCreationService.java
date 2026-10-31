@@ -26,6 +26,7 @@ public class ProfileCreationService {
     private static final String PROFILES_FILE_PATH = "profiles.json";
     private final ProfileRepository profileRepository;
     private final PollinationsImageService imageService;
+    private final me.pravat.tinder_ai_backend.storage.ImageStorageService images;
 
     public synchronized List<Profile> generateProfiles(int count, int minAge, int maxAge, List<String> ethnicities) {
         validateSettings(minAge, maxAge, ethnicities);
@@ -89,29 +90,11 @@ public class ProfileCreationService {
                 + profile.bio()
                 + ", highly detailed, photorealistic, natural lighting.";
 
-        try {
-            PollinationsImageService.GeneratedImage generated = imageService.generate(prompt);
-            byte[] image = generated.bytes();
-            Path dir = Paths.get("src/main/resources/static/images");
-            Files.createDirectories(dir);
-
-            String imageName = uuid + generated.extension();
-            Files.write(dir.resolve(imageName), image);
-
-            return new Profile(
-                    uuid,
-                    profile.firstName(),
-                    profile.lastName(),
-                    profile.age(),
-                    profile.ethnicity(),
-                    profile.gender(),
-                    profile.bio(),
-                    imageName,
-                    profile.myersBriggsPersonalityType());
-
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to save generated profile image", e);
-        }
+        PollinationsImageService.GeneratedImage generated = imageService.generate(prompt);
+        String imageUrl = images.upload("ai-profiles/" + uuid, generated.bytes(), generated.extension());
+        return new Profile(uuid, profile.firstName(), profile.lastName(), profile.age(),
+                profile.ethnicity(), profile.gender(), profile.bio(), imageUrl,
+                profile.myersBriggsPersonalityType());
     }
 
     private List<Profile> readExistingProfiles() {
@@ -167,9 +150,11 @@ public class ProfileCreationService {
     }
 
     public ProfileCreationService(ChatClient chatClient,
-            ProfileRepository profileRepository, PollinationsImageService imageService) {
+            ProfileRepository profileRepository, PollinationsImageService imageService,
+            me.pravat.tinder_ai_backend.storage.ImageStorageService images) {
         this.chatClient = chatClient;
         this.profileRepository = profileRepository;
         this.imageService = imageService;
+        this.images = images;
     }
 }

@@ -35,7 +35,11 @@ public record ProfileRequest(@NotBlank @Size(max = 80) String firstName,
     }
 
     public Profile toProfile(String id) {
+        return toProfile(id, imageUrl);
+    }
+
+    public Profile toProfile(String id, String storedImageUrl) {
         return new Profile(id, firstName.trim(), lastName.trim(), age, ethnicity.trim(), gender,
-                bio, imageUrl, myersBriggsPersonalityType);
+                bio, storedImageUrl, myersBriggsPersonalityType);
     }
 }

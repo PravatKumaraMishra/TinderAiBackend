@@ -11,8 +11,9 @@ import org.springframework.data.mongodb.core.query.*;
 public class UserService {
     private final UserRepository repository;
     private final MongoTemplate mongo;
-    public UserService(UserRepository repository, MongoTemplate mongo) {
-        this.repository = repository; this.mongo = mongo;
+    private final me.pravat.tinder_ai_backend.storage.ImageStorageService images;
+    public UserService(UserRepository repository, MongoTemplate mongo, me.pravat.tinder_ai_backend.storage.ImageStorageService images) {
+        this.repository = repository; this.mongo = mongo; this.images = images;
     }
 
     public UserAccount get(String id) {
@@ -25,8 +26,9 @@ public class UserService {
         return profile;
     }
     public Profile updateProfile(String id, ProfileRequest request) {
-        get(id);
-        Profile profile = request.toProfile(id);
+        UserAccount account = get(id);
+        Profile profile = request.toProfile(id, images.userPhoto(id, request.imageUrl(),
+                account.profile() == null ? null : account.profile().imageUrl()));
         var result = mongo.updateFirst(Query.query(Criteria.where("id").is(id)),
                 new Update().set("profile", profile), UserAccount.class);
         if (result.getMatchedCount() != 1) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,

@@ -127,7 +127,7 @@ class GoogleAuthenticationTests {
     @Test void incompleteProfileBlocksMatchingAndChatting() {
         var users = mock(UserRepository.class);
         when(users.findById("google-user")).thenReturn(Optional.of(new UserAccount("google-user", "alice@gmail.com", null, null, Instant.now(), "subject")));
-        var service = new UserService(users, mock(MongoTemplate.class));
+        var service = new UserService(users, mock(MongoTemplate.class), mock(me.pravat.tinder_ai_backend.storage.ImageStorageService.class));
         assertEquals(409, assertThrows(ResponseStatusException.class, () -> service.getProfile("google-user")).getStatusCode().value());
     }
 }

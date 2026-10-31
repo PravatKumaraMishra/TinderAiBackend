@@ -35,6 +35,7 @@ class TinderAiBackendApplicationTests {
     @Autowired MockMvc mvc;
     @Autowired TokenService tokens;
     @Autowired JwtEncoder encoder;
+    @MockitoBean me.pravat.tinder_ai_backend.storage.ImageStorageService images;
     @MockitoBean UserRepository users;
     @MockitoBean MatchRepository matches;
     @MockitoBean ProfileRepository profiles;

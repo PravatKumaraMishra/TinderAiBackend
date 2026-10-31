@@ -18,9 +18,11 @@ public class AuthService {
     private final PasswordEncoder passwords;
     private final AuthenticationManager authentication;
     private final TokenService tokens;
+    private final me.pravat.tinder_ai_backend.storage.ImageStorageService images;
     public AuthService(UserRepository users, PasswordEncoder passwords,
-                       AuthenticationManager authentication, TokenService tokens) {
-        this.users = users; this.passwords = passwords; this.authentication = authentication; this.tokens = tokens;
+                       AuthenticationManager authentication, TokenService tokens,
+                       me.pravat.tinder_ai_backend.storage.ImageStorageService images) {
+        this.users = users; this.passwords = passwords; this.authentication = authentication; this.tokens = tokens; this.images = images;
     }
     public TokenService.TokenResponse register(AuthController.RegisterRequest request) {
         if (request.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
@@ -28,7 +30,7 @@ public class AuthService {
         }
         String id = UUID.randomUUID().toString();
         UserAccount account = new UserAccount(id, normalizeEmail(request.email()), passwords.encode(request.password()),
-                request.profile().toProfile(id), Instant.now());
+                request.profile().toProfile(id, images.userPhoto(id, request.profile().imageUrl(), null)), Instant.now());
         try { users.insert(account); }
         catch (DuplicateKeyException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered");

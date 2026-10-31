@@ -269,3 +269,35 @@ Profiles are inserted into MongoDB and the completed batch is appended to the lo
 and served at `/images/<filename>`, including when running the packaged JAR. Local
 JSON and images require a writable working directory and retain the existing storage
 lifetime. A local JSON write failure can occur after profiles have been saved to MongoDB.
+
+### Profile picture object storage (Cloudflare R2)
+
+New AI-generated pictures and user profile uploads are stored in R2. MongoDB stores the
+resulting image URL, not the image bytes. The existing profile form sends its compressed
+JPEG data URL to the backend; the backend uploads it before saving the profile. No browser
+storage credentials or bucket CORS rules are needed for this server-side upload flow.
+
+1. Create an R2 bucket and a bucket-scoped **Object Read & Write** API token.
+2. Connect a public custom domain to the bucket (or use its R2 public development URL locally).
+3. Set these backend environment variables, also listed in `.env.example`:
+
+```dotenv
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=<access-key-id>
+R2_SECRET_ACCESS_KEY=<secret-access-key>
+R2_BUCKET=profile-pictures
+R2_PUBLIC_URL=https://images.example.com
+```
+
+`R2_PUBLIC_URL` is the bucket's public delivery URL, not its S3 API endpoint. Pictures
+are publicly accessible through that URL. Keep credentials on the backend. Objects use
+unique keys under `users/<account-id>/` and `ai-profiles/<persona-id>/`; replacing a photo
+produces a new URL to avoid stale caches. Profile edits may retain the account's current
+URL or upload a new photo; arbitrary replacement URLs are rejected.
+
+Missing configuration fails new uploads with HTTP 503; there is no local-file fallback.
+Existing bundled images and existing base64 profile pictures remain readable. This change
+does not migrate existing pictures or delete old/replaced objects; manage unused objects
+through the bucket until an object-retention policy is implemented.
+
+R2 SDK setup follows the [Cloudflare Java SDK example](https://developers.cloudflare.com/r2/examples/aws/aws-sdk-java/).
