@@ -9,14 +9,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -28,10 +25,7 @@ public class ProfileCreationService {
     private final ChatClient chatClient;
     private static final String PROFILES_FILE_PATH = "profiles.json";
     private final ProfileRepository profileRepository;
-    private final RestClient restClient;
-
-    @Value("${pixazo.api-key}")
-    private String pixazoApiKey;
+    private final PollinationsImageService imageService;
 
     public synchronized List<Profile> generateProfiles(int count, int minAge, int maxAge, List<String> ethnicities) {
         validateSettings(minAge, maxAge, ethnicities);
@@ -52,9 +46,6 @@ public class ProfileCreationService {
                         previous, batchTools.getGeneratedProfiles().size())) {
                     if (created.size() == count) break;
                     Profile profile = generateProfileImage(generated);
-                    if (profile == null) {
-                        throw new IllegalStateException("Image generation failed");
-                    }
                     profileRepository.insert(profile);
                     created.add(profile);
                 }
@@ -99,23 +90,12 @@ public class ProfileCreationService {
                 + ", highly detailed, photorealistic, natural lighting.";
 
         try {
-            Map<?, ?> result = restClient.post()
-                    .uri("https://gateway.pixazo.ai/flux-1-schnell/v1/getData")
-                    .header("Ocp-Apim-Subscription-Key", pixazoApiKey)
-                    .body(Map.of(
-                            "prompt", prompt,
-                            "num_steps", 4,
-                            "width", 512,
-                            "height", 512))
-                    .retrieve()
-                    .body(Map.class);
-
-            String imageUrl = (String) result.get("output");
-            byte[] image = restClient.get().uri(imageUrl).retrieve().body(byte[].class);
+            PollinationsImageService.GeneratedImage generated = imageService.generate(prompt);
+            byte[] image = generated.bytes();
             Path dir = Paths.get("src/main/resources/static/images");
             Files.createDirectories(dir);
 
-            String imageName = uuid + ".png";
+            String imageName = uuid + generated.extension();
             Files.write(dir.resolve(imageName), image);
 
             return new Profile(
@@ -129,9 +109,8 @@ public class ProfileCreationService {
                     imageName,
                     profile.myersBriggsPersonalityType());
 
-        } catch (Exception e) {
-            System.err.println("Image generation failed: " + e.getMessage());
-            return null;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to save generated profile image", e);
         }
     }
 
@@ -188,9 +167,9 @@ public class ProfileCreationService {
     }
 
     public ProfileCreationService(ChatClient chatClient,
-            ProfileRepository profileRepository, RestClient restClient) {
+            ProfileRepository profileRepository, PollinationsImageService imageService) {
         this.chatClient = chatClient;
         this.profileRepository = profileRepository;
-        this.restClient = restClient;
+        this.imageService = imageService;
     }
 }

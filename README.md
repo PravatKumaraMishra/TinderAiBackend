@@ -5,7 +5,7 @@ JWT signing/verification uses Spring Security OAuth2 Resource Server and Nimbus 
 not a custom servlet filter or a separately pinned JWT library.
 
 Uses MongoDB for persistence, Spring AI for an OpenAI-compatible chat service, and
-Pixazo for persona image generation. Companion
+Pollinations for persona image generation. Companion
 [React frontend](https://github.com/PravatKumaraMishra/TinderAiFrontend).
 
 ## Requirements and local startup
@@ -30,7 +30,7 @@ Run from the repository root to keep the generated `profiles.json` in a predicta
 ## Configuration
 
 Keep the existing MongoDB and AI environment variables (`DATASOURCE_URL`, `LLM_BASE_URL`,
-`CHAT_MODEL`, `LLM_API_KEY`, `LLM_TIMEOUT`, `LLM_MAX_RETRY`, `PIXAZO_API_KEY`).
+`CHAT_MODEL`, `LLM_API_KEY`, `LLM_TIMEOUT`, `LLM_MAX_RETRY`, `POLLINATIONS_API_KEY`).
 Add:
 
 | Variable | Purpose / default |
@@ -240,7 +240,15 @@ For the effective settings: ages must satisfy `18 <= minAge <= maxAge <= 120`, a
 be a nonempty array of nonblank strings. Invalid settings return `400` before any
 provider call. Startup seeding and its environment variables have been removed.
 `MIN_AGE`, `MAX_AGE`, and `ETHNICITIES` optionally override the server defaults;
-`PIXAZO_API_KEY` remains a server-side secret.
+`POLLINATIONS_API_KEY` remains a server-side secret. Create a backend secret key at
+[Pollinations](https://enter.pollinations.ai/keys) and set it on Render before deploying.
+`PIXAZO_API_KEY` and `GEMINI_API_KEY` are no longer used.
+`POLLINATIONS_IMAGE_MODEL` defaults to `community/scriptsnsenses-sys/flux-2-dev-free`.
+Before generation, the backend checks the live model catalog and rejects paid-only,
+priced, or unavailable models. There is no fallback to a paid model. Free community
+model availability and account limits can change; a missing key, exhausted quota,
+or unavailable model causes generation to fail. See [API docs](https://gen.pollinations.ai/docs).
+The existing `LLM_*` / `CHAT_MODEL` settings still control persona text generation.
 
 Generation is synchronous and can take time; configure the calling client's/proxy's
 timeout accordingly. Calls are serialized within each backend instance. The AI tool
