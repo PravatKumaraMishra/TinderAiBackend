@@ -42,6 +42,7 @@ class TinderAiBackendApplicationTests {
     @MockitoBean ConversationRepository conversations;
     @MockitoBean ConversationService conversationService;
     @MockitoBean GoogleAuthService googleAuth;
+    @MockitoBean GoogleProfileClient googleProfiles;
     @MockitoBean ProfileCreationService profileCreation;
     @MockitoBean org.springframework.data.mongodb.core.MongoTemplate mongo;
     private final Map<String, UserAccount> accounts = new HashMap<>();

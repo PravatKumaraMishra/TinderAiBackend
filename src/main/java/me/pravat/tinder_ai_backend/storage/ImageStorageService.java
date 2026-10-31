@@ -40,7 +40,9 @@ public class ImageStorageService {
         if (!incoming.startsWith("data:image/jpeg;base64,")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profile photo must be JPEG");
         }
-        return upload("users/" + userId, Base64.getDecoder().decode(incoming.substring(23)), ".jpg");
+        byte[] bytes = Base64.getDecoder().decode(incoming.substring(23));
+        if (bytes.length > 500 * 1024) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Profile photo must be up to 500 KB");
+        return upload("users/" + userId, bytes, ".jpg");
     }
 
     public String upload(String prefix, byte[] bytes, String extension) {

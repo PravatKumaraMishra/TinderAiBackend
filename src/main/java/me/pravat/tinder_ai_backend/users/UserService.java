@@ -28,7 +28,7 @@ public class UserService {
     public Profile updateProfile(String id, ProfileRequest request) {
         UserAccount account = get(id);
         Profile profile = request.toProfile(id, images.userPhoto(id, request.imageUrl(),
-                account.profile() == null ? null : account.profile().imageUrl()));
+                account.profile() == null ? (account.googleProfile() == null ? null : account.googleProfile().imageUrl()) : account.profile().imageUrl()));
         var result = mongo.updateFirst(Query.query(Criteria.where("id").is(id)),
                 new Update().set("profile", profile), UserAccount.class);
         if (result.getMatchedCount() != 1) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,

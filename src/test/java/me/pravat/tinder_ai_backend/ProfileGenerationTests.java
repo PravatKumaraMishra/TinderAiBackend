@@ -9,6 +9,32 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class ProfileGenerationTests {
+    @Test void providerFailureIsLoggedWithStageAndOriginalCause() {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ProfileCreationService.class);
+        var events = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        events.start();
+        logger.addAppender(events);
+        try {
+            ChatClient ai = mock(ChatClient.class);
+            var failure = new IllegalStateException("Provider unavailable");
+            when(ai.prompt(anyString())).thenThrow(failure);
+            var service = new ProfileCreationService(ai, mock(ProfileRepository.class),
+                    mock(PollinationsImageService.class), mock(me.pravat.tinder_ai_backend.storage.ImageStorageService.class));
+            var response = assertThrows(ResponseStatusException.class,
+                    () -> service.generateProfiles(1, 25, 25, List.of("Indian")));
+            assertEquals(502, response.getStatusCode().value());
+            assertSame(failure, response.getCause());
+            var error = events.list.stream()
+                    .filter(event -> event.getLevel() == ch.qos.logback.classic.Level.ERROR).findFirst().orElseThrow();
+            assertTrue(error.getFormattedMessage().contains("stage=persona generation"));
+            assertTrue(error.getFormattedMessage().contains("saved=0"));
+            assertEquals("Provider unavailable", error.getThrowableProxy().getMessage());
+        } finally {
+            logger.detachAppender(events);
+            events.stop();
+        }
+    }
+
     @Test void invalidSettingsAreRejectedBeforeProviderCalls() {
         ChatClient ai = mock(ChatClient.class);
         var service = new ProfileCreationService(ai, mock(ProfileRepository.class), mock(PollinationsImageService.class), mock(me.pravat.tinder_ai_backend.storage.ImageStorageService.class));

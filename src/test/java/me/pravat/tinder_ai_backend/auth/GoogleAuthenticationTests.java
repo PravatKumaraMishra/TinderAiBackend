@@ -30,6 +30,7 @@ class GoogleAuthenticationTests {
     private String credential(String issuer, String audience, Instant expiry, boolean verified, KeyPair signingKeys) {
         var claims = JwtClaimsSet.builder().issuer(issuer).subject("google-subject")
                 .audience(List.of(audience)).issuedAt(Instant.now().minusSeconds(300)).expiresAt(expiry)
+                .claim("given_name", "Alice").claim("family_name", "Example").claim("picture", "https://lh3.googleusercontent.com/photo")
                 .claim("email", "ALICE@gmail.com").claim("email_verified", verified).build();
         return NimbusJwtEncoder.withKeyPair((RSAPublicKey) signingKeys.getPublic(), (RSAPrivateKey) signingKeys.getPrivate())
                 .build().encode(JwtEncoderParameters.from(claims)).getTokenValue();
@@ -39,6 +40,9 @@ class GoogleAuthenticationTests {
             var identity = verifier.verify(credential(issuer, "web-client", Instant.now().plusSeconds(300), true, keys));
             assertEquals("google-subject", identity.subject());
             assertEquals("alice@gmail.com", identity.email());
+            assertEquals("Alice", identity.profile("id").firstName());
+            assertEquals("Example", identity.profile("id").lastName());
+            assertEquals("https://lh3.googleusercontent.com/photo", identity.profile("id").imageUrl());
         }
     }
     @Test void rejectsWrongIssuerAudienceExpiredAndUnverifiedCredentials() {

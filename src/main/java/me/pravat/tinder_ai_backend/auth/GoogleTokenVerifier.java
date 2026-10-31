@@ -43,10 +43,17 @@ public class GoogleTokenVerifier {
             if (!Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified")) || email == null || email.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Google email is not verified");
             }
-            return new GoogleIdentity(jwt.getSubject(), AuthService.normalizeEmail(email));
+            return new GoogleIdentity(jwt.getSubject(), AuthService.normalizeEmail(email), jwt.getClaimAsString("given_name"), jwt.getClaimAsString("family_name"), jwt.getClaimAsString("picture"));
         } catch (JwtException | IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid Google credential");
         }
     }
-    public record GoogleIdentity(String subject, String email) {}
+    public record GoogleIdentity(String subject, String email, String firstName, String lastName, String picture, int age, me.pravat.tinder_ai_backend.profile.Gender gender) {
+        public GoogleIdentity(String subject, String email, String firstName, String lastName, String picture) { this(subject, email, firstName, lastName, picture, 0, null); }
+        public GoogleIdentity(String subject, String email) { this(subject, email, null, null, null); }
+        public me.pravat.tinder_ai_backend.profile.Profile profile(String id) {
+            String photo = picture != null && picture.startsWith("https://") && picture.length() <= 500 ? picture : "";
+            return new me.pravat.tinder_ai_backend.profile.Profile(id, firstName, lastName, age, "", gender, "", photo, "");
+        }
+    }
 }

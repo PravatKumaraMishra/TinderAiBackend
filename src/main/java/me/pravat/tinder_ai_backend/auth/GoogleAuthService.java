@@ -22,12 +22,22 @@ public class GoogleAuthService {
     }
 
     public TokenService.TokenResponse login(String credential) {
-        var identity = verifier.verify(credential);
+        return loginIdentity(verifier.verify(credential));
+    }
+
+    public TokenService.TokenResponse loginIdentity(GoogleTokenVerifier.GoogleIdentity identity) {
         var existing = users.findByGoogleSubject(identity.subject());
-        if (existing.isPresent()) return tokens.issue(existing.get().id());
+        if (existing.isPresent()) {
+            var account = existing.get();
+            if (account.profile() == null) mongo.updateFirst(
+                    Query.query(Criteria.where("id").is(account.id()).and("profile").is(null)),
+                    new Update().set("googleProfile", identity.profile(account.id())), UserAccount.class);
+            return tokens.issue(account.id());
+        }
         if (users.findByEmail(identity.email()).isPresent()) throw linkingRequired();
-        UserAccount account = new UserAccount(UUID.randomUUID().toString(), identity.email(), null,
-                null, Instant.now(), identity.subject());
+        String id = UUID.randomUUID().toString();
+        UserAccount account = new UserAccount(id, identity.email(), null,
+                null, Instant.now(), identity.subject(), identity.profile(id));
         try {
             users.insert(account);
         } catch (DuplicateKeyException ex) {

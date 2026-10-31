@@ -14,6 +14,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -21,6 +23,7 @@ import com.google.gson.reflect.TypeToken;
 
 @Service
 public class ProfileCreationService {
+    private static final Logger log = LoggerFactory.getLogger(ProfileCreationService.class);
 
     private final ChatClient chatClient;
     private static final String PROFILES_FILE_PATH = "profiles.json";
@@ -36,32 +39,48 @@ public class ProfileCreationService {
         }
         ProfileTools batchTools = new ProfileTools();
         List<Profile> created = new ArrayList<>();
+        String batchId = UUID.randomUUID().toString();
+        long started = System.nanoTime();
+        log.info("Profile generation started: batch={}, count={}", batchId, count);
         // Bound attempts when the provider fails to call the tool.
         for (int attempt = 0; attempt < count * 3 && created.size() < count; attempt++) {
             int previous = batchTools.getGeneratedProfiles().size();
+            String stage = "persona generation";
             try {
+                log.info("Profile generation: batch={}, attempt={}, stage={}", batchId, attempt + 1, stage);
                 chatClient.prompt(buildProfilePrompt(getRandomElement(ethnicities),
                         ThreadLocalRandom.current().nextInt(minAge, maxAge + 1)))
                         .tools(batchTools).call().content();
                 for (GenerateProfileResponse generated : batchTools.getGeneratedProfiles().subList(
                         previous, batchTools.getGeneratedProfiles().size())) {
                     if (created.size() == count) break;
-                    Profile profile = generateProfileImage(generated);
+                    stage = "image generation and upload";
+                    Profile profile = generateProfileImage(generated, batchId);
+                    stage = "database insert";
                     profileRepository.insert(profile);
                     created.add(profile);
+                    log.info("Profile saved: batch={}, saved={}, requested={}", batchId, created.size(), count);
+                }
+                if (batchTools.getGeneratedProfiles().size() == previous) {
+                    log.warn("AI returned without calling saveProfile: batch={}, attempt={}", batchId, attempt + 1);
                 }
             } catch (Exception failure) {
+                log.error("Profile generation failed: batch={}, stage={}, saved={}, elapsedMs={}",
+                        batchId, stage, created.size(), (System.nanoTime() - started) / 1_000_000, failure);
                 throw new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.BAD_GATEWAY,
                         "Profile generation failed; " + created.size() + " profiles already saved", failure);
             }
         }
         if (created.size() != count) {
+            log.error("AI did not produce enough profiles: batch={}, saved={}, requested={}", batchId, created.size(), count);
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_GATEWAY,
                     "AI did not produce enough profiles; " + created.size() + " profiles already saved");
         }
         saveGeneratedBatch(created);
+        log.info("Profile generation completed: batch={}, saved={}, elapsedMs={}",
+                batchId, created.size(), (System.nanoTime() - started) / 1_000_000);
         return List.copyOf(created);
     }
 
@@ -79,7 +98,7 @@ public class ProfileCreationService {
                 """.formatted(ethnicity, age, ThreadLocalRandom.current().nextBoolean() ? "male" : "female");
     }
 
-    private Profile generateProfileImage(GenerateProfileResponse profile) {
+    private Profile generateProfileImage(GenerateProfileResponse profile, String batchId) {
         String uuid = UUID.randomUUID().toString();
 
         String prompt = getRandomElement(selfieTypes())
@@ -90,7 +109,9 @@ public class ProfileCreationService {
                 + profile.bio()
                 + ", highly detailed, photorealistic, natural lighting.";
 
+        log.info("Profile generation: batch={}, stage=image generation", batchId);
         PollinationsImageService.GeneratedImage generated = imageService.generate(prompt);
+        log.info("Profile generation: batch={}, stage=image upload", batchId);
         String imageUrl = images.upload("ai-profiles/" + uuid, generated.bytes(), generated.extension());
         return new Profile(uuid, profile.firstName(), profile.lastName(), profile.age(),
                 profile.ethnicity(), profile.gender(), profile.bio(), imageUrl,
